@@ -14,6 +14,7 @@ import './styles.css';
 import BorderGlow from './components/BorderGlow';
 import DepthCarousel from './components/DepthCarousel';
 import ProfileSidebar from './components/ProfileSidebar';
+import { WorkExperienceList, WorkExperienceDetail } from './components/WorkExperience';
 import './portfolio.css';
 
 const projects = [
@@ -90,17 +91,54 @@ function App() {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [videoFailed, setVideoFailed] = React.useState(false);
   const [heroVideoIndex, setHeroVideoIndex] = React.useState(0);
+  const [selectedExperience, setSelectedExperience] = React.useState(null);
+  const overviewPosition = React.useRef({ top: 0, cardId: null });
+  const pendingNavigation = React.useRef(null);
+  const hasOpenedExperience = React.useRef(false);
   const heroRef = React.useRef(null);
   const headerRef = React.useRef(null);
   const scrollProgressRef = React.useRef(null);
   const backToTopRef = React.useRef(null);
   const navItems = [
-    ['经历', '#about'],
+    ['经历', '#experience'],
     ['项目', '#projects'],
     ['优势', '#strengths'],
   ];
 
   const closeMenu = () => setMenuOpen(false);
+  const openExperience = (experience) => {
+    overviewPosition.current = { top: window.scrollY, cardId: `experience-card-${experience.id}` };
+    hasOpenedExperience.current = true;
+    setSelectedExperience(experience);
+  };
+  const returnToOverview = () => setSelectedExperience(null);
+  const handleDetailNavigation = (event) => {
+    if (!selectedExperience || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const anchor = event.target.closest('a[href^="#"]');
+    if (!anchor) return;
+    event.preventDefault();
+    pendingNavigation.current = anchor.getAttribute('href');
+    closeMenu();
+    setSelectedExperience(null);
+  };
+
+  React.useLayoutEffect(() => {
+    if (!hasOpenedExperience.current) return;
+    if (selectedExperience) {
+      const title = document.getElementById('experience-detail-title');
+      title?.focus({ preventScroll: true });
+      document.querySelector('.experience-detail')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+    } else if (pendingNavigation.current) {
+      const target = pendingNavigation.current;
+      pendingNavigation.current = null;
+      document.querySelector(target)?.scrollIntoView({ behavior: 'instant', block: 'start' });
+      window.history.replaceState(null, '', target);
+    } else {
+      document.getElementById(overviewPosition.current.cardId)?.focus({ preventScroll: true });
+      window.scrollTo({ top: overviewPosition.current.top, behavior: 'instant' });
+    }
+    window.dispatchEvent(new Event('resize'));
+  }, [selectedExperience]);
   const playNextHeroVideo = () => {
     setVideoFailed(false);
     setHeroVideoIndex((index) => (index + 1) % heroVideos.length);
@@ -134,7 +172,7 @@ function App() {
   }, []);
 
   return (
-    <main>
+    <main onClickCapture={handleDetailNavigation}>
       <header className="site-header" ref={headerRef}>
         <div className="scroll-progress" aria-hidden="true"><span ref={scrollProgressRef} /></div>
         <a className="brand" href="#top" aria-label="回到首页">
@@ -192,6 +230,7 @@ function App() {
       <div className="portfolio-shell" id="about">
         <ProfileSidebar />
         <div className="portfolio-main">
+          {selectedExperience ? <WorkExperienceDetail experience={selectedExperience} onBack={returnToOverview} /> : <>
           <section className="portfolio-overview" aria-labelledby="overview-title">
             <div className="overview-topline"><span><i /> 在代码与体验之间</span><span>PORTFOLIO / 2026</span></div>
             <h2 id="overview-title">让想法落地，<br />让体验<span>自然发生。</span></h2>
@@ -253,9 +292,11 @@ function App() {
         </div>
       </section>
 
+      <WorkExperienceList onSelect={openExperience} />
+
       <section className="strengths section" id="strengths">
         <div className="strength-intro">
-          <div className="section-label">03 <span /> 个人优势</div>
+          <div className="section-label">04 <span /> 个人优势</div>
           <h2>能力并非堆叠，<br />而是关键时刻的<strong>稳定输出。</strong></h2>
         </div>
         <div className="strength-grid">
@@ -272,6 +313,7 @@ function App() {
         </div>
       </section>
 
+          </>}
         </div>
         {/* A future right sidebar can be added as a third grid column; it takes no space yet. */}
       </div>
